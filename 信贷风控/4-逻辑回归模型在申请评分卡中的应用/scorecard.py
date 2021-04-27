@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 import re
 import time
@@ -10,10 +11,13 @@ from statsmodels.stats.outliers_influence import variance_inflation_factor
 from sklearn.linear_model import LogisticRegressionCV
 import statsmodels.api as sm
 from sklearn.ensemble import RandomForestClassifier
+import scorecard_functions_V3 as v3
 
 def CareerYear(x):
     #对工作年限进行转换
-    if x.find('n/a') > -1:
+    if type(x).__name__ == 'float':
+        return -1
+    elif x.find('n/a') > -1:
         return -1
     elif x.find("10+")>-1:   #将"10＋years"转换成 11
         return 11
@@ -70,7 +74,8 @@ def MakeupMissing(x):
 # 2，选择合适的建模样本
 # 3，数据集划分成训练集和测试集
 #allData = pd.read_csv('C:/Users/OkO/Desktop/Financial Data Analsys/3nd Series/Data/application.csv',header = 0)
-allData = pd.read_csv('C:/Users/OkO/Desktop/Financial Data Analsys/3nd Series/Data/application.csv',header = 0, encoding = 'latin1')
+allData = pd.read_csv('../2-申请评分卡中的数据预处理和特征衍生/application.csv',header = 0, encoding = 'latin1')
+
 allData['term'] = allData['term'].apply(lambda x: int(x.replace(' months','')))
 
 # 处理标签：Fully Paid是正常用户；Charged Off是违约用户
@@ -152,7 +157,7 @@ less_value_features = []
 # 第一步，检查类别型变量中，哪些变量取值超过5
 for var in cat_features:
     valueCounts = len(set(trainData[var]))
-    print valueCounts
+    print (valueCounts)
     if valueCounts > 5:
         more_value_features.append(var)  #取值超过5的变量，需要bad rate编码，再用卡方分箱法进行分箱
     else:
@@ -162,17 +167,17 @@ for var in cat_features:
 merge_bin_dict = {}  #存放需要合并的变量，以及合并方法
 var_bin_list = []   #由于某个取值没有好或者坏样本而需要合并的变量
 for col in less_value_features:
-    binBadRate = BinBadRate(trainData, col, 'y')[0]
+    binBadRate = v3.BinBadRate(trainData, col, 'y')[0]
     if min(binBadRate.values()) == 0 :  #由于某个取值没有坏样本而进行合并
-        print '{} need to be combined due to 0 bad rate'.format(col)
-        combine_bin = MergeBad0(trainData, col, 'y')
+        print ('{} need to be combined due to 0 bad rate'.format(col))
+        combine_bin = v3.MergeBad0(trainData, col, 'y')
         merge_bin_dict[col] = combine_bin
         newVar = col + '_Bin'
         trainData[newVar] = trainData[col].map(combine_bin)
         var_bin_list.append(newVar)
     if max(binBadRate.values()) == 1:    #由于某个取值没有好样本而进行合并
-        print '{} need to be combined due to 0 good rate'.format(col)
-        combine_bin = MergeBad0(trainData, col, 'y',direction = 'good')
+        print ('{} need to be combined due to 0 good rate'.format(col))
+        combine_bin = v3.MergeBad0(trainData, col, 'y',direction = 'good')
         merge_bin_dict[col] = combine_bin
         newVar = col + '_Bin'
         trainData[newVar] = trainData[col].map(combine_bin)
@@ -184,7 +189,7 @@ less_value_features = [i for i in less_value_features if i + '_Bin' not in var_b
 # （ii）当取值>5时：用bad rate进行编码，放入连续型变量里
 br_encoding_dict = {}   #记录按照bad rate进行编码的变量，及编码方式
 for col in more_value_features:
-    br_encoding = BadRateEncoding(trainData, col, 'y')
+    br_encoding = v3.BadRateEncoding(trainData, col, 'y')
     trainData[col+'_br_encoding'] = br_encoding['encoding']
     br_encoding_dict[col] = br_encoding['bad_rate']
     num_features.append(col+'_br_encoding')
@@ -192,44 +197,44 @@ for col in more_value_features:
 # （iii）对连续型变量进行分箱，包括（ii）中的变量
 continous_merged_dict = {}
 for col in num_features:
-    print "{} is in processing".format(col)
+    print ("{} is in processing".format(col))
     if -1 not in set(trainData[col]):   #－1会当成特殊值处理。如果没有－1，则所有取值都参与分箱
         max_interval = 5   #分箱后的最多的箱数
-        cutOff = ChiMerge(trainData, col, 'y', max_interval=max_interval,special_attribute=[],minBinPcnt=0)
-        trainData[col+'_Bin'] = trainData[col].map(lambda x: AssignBin(x, cutOff,special_attribute=[]))
-        monotone = BadRateMonotone(trainData, col+'_Bin', 'y')   # 检验分箱后的单调性是否满足
+        cutOff = v3.ChiMerge(trainData, col, 'y', max_interval=max_interval,special_attribute=[],minBinPcnt=0)
+        trainData[col+'_Bin'] = trainData[col].map(lambda x: v3.AssignBin(x, cutOff,special_attribute=[]))
+        monotone = v3.BadRateMonotone(trainData, col+'_Bin', 'y')   # 检验分箱后的单调性是否满足
         while(not monotone):
             # 检验分箱后的单调性是否满足。如果不满足，则缩减分箱的个数。
             max_interval -= 1
-            cutOff = ChiMerge(trainData, col, 'y', max_interval=max_interval, special_attribute=[],
+            cutOff = v3.ChiMerge(trainData, col, 'y', max_interval=max_interval, special_attribute=[],
                                           minBinPcnt=0)
-            trainData[col + '_Bin'] = trainData[col].map(lambda x: AssignBin(x, cutOff, special_attribute=[]))
+            trainData[col + '_Bin'] = trainData[col].map(lambda x: v3.AssignBin(x, cutOff, special_attribute=[]))
             if max_interval == 2:
                 # 当分箱数为2时，必然单调
                 break
-            monotone = BadRateMonotone(trainData, col + '_Bin', 'y')
+            monotone = v3.BadRateMonotone(trainData, col + '_Bin', 'y')
         newVar = col + '_Bin'
-        trainData[newVar] = trainData[col].map(lambda x: AssignBin(x, cutOff, special_attribute=[]))
+        trainData[newVar] = trainData[col].map(lambda x: v3.AssignBin(x, cutOff, special_attribute=[]))
         var_bin_list.append(newVar)
     else:
         max_interval = 5
         # 如果有－1，则除去－1后，其他取值参与分箱
-        cutOff = ChiMerge(trainData, col, 'y', max_interval=max_interval, special_attribute=[-1],
+        cutOff = v3.ChiMerge(trainData, col, 'y', max_interval=max_interval, special_attribute=[-1],
                                       minBinPcnt=0)
-        trainData[col + '_Bin'] = trainData[col].map(lambda x: AssignBin(x, cutOff, special_attribute=[-1]))
-        monotone = BadRateMonotone(trainData, col + '_Bin', 'y',['Bin -1'])
+        trainData[col + '_Bin'] = trainData[col].map(lambda x: v3.AssignBin(x, cutOff, special_attribute=[-1]))
+        monotone = v3.BadRateMonotone(trainData, col + '_Bin', 'y',['Bin -1'])
         while (not monotone):
             max_interval -= 1
             # 如果有－1，－1的bad rate不参与单调性检验
-            cutOff = ChiMerge(trainData, col, 'y', max_interval=max_interval, special_attribute=[-1],
+            cutOff = v3.ChiMerge(trainData, col, 'y', max_interval=max_interval, special_attribute=[-1],
                                           minBinPcnt=0)
-            trainData[col + '_Bin'] = trainData[col].map(lambda x: AssignBin(x, cutOff, special_attribute=[-1]))
+            trainData[col + '_Bin'] = trainData[col].map(lambda x: v3.AssignBin(x, cutOff, special_attribute=[-1]))
             if max_interval == 3:
                 # 当分箱数为3-1=2时，必然单调
                 break
-            monotone = BadRateMonotone(trainData, col + '_Bin', 'y',['Bin -1'])
+            monotone = v3.BadRateMonotone(trainData, col + '_Bin', 'y',['Bin -1'])
         newVar = col + '_Bin'
-        trainData[newVar] = trainData[col].map(lambda x: AssignBin(x, cutOff, special_attribute=[-1]))
+        trainData[newVar] = trainData[col].map(lambda x: v3.AssignBin(x, cutOff, special_attribute=[-1]))
         var_bin_list.append(newVar)
     continous_merged_dict[col] = cutOff
 
@@ -246,7 +251,7 @@ IV_dict = {}
 # 4，连续变量。分箱后新的变量存放在var_bin_list中
 all_var = var_bin_list  + less_value_features
 for var in all_var:
-    woe_iv = CalcWOE(trainData, var, 'y')
+    woe_iv = v3.CalcWOE(trainData, var, 'y')
     WOE_dict[var] = woe_iv['WOE']
     IV_dict[var] = woe_iv['IV']
 
@@ -317,7 +322,7 @@ multi_analysis_vars_1 = [high_IV_sorted[i][0]+"_WOE" for i in range(cnt_vars) if
 X = np.matrix(trainData[multi_analysis_vars_1])
 VIF_list = [variance_inflation_factor(X, i) for i in range(X.shape[1])]
 max_VIF = max(VIF_list)
-print max_VIF
+print (max_VIF)
 # 最大的VIF是1.32267733123，因此这一步认为没有多重共线性
 multi_analysis = multi_analysis_vars_1
 
@@ -348,9 +353,9 @@ while(len(varLargeP) > 0 and len(multi_analysis) > 0):
     # (1) 剩余所有变量均显著
     # (2) 没有特征可选
     varMaxP = varLargeP[0][0]
-    print varMaxP
+    print (varMaxP)
     if varMaxP == 'intercept':
-        print 'the intercept is not significant!'
+        print ('the intercept is not significant!')
         break
     multi_analysis.remove(varMaxP)
     y = trainData['y']
@@ -400,7 +405,7 @@ X_train.shape, y_train.shape
 model_parameter = {}
 for C_penalty in np.arange(0.005, 0.2,0.005):
     for bad_weight in range(2, 101, 2):
-        print C_penalty, bad_weight
+        print (C_penalty, bad_weight)
         LR_model_2 = LogisticRegressionCV(Cs=[C_penalty], penalty='l1', solver='liblinear', class_weight={1:bad_weight, 0:1})
         LR_model_2_fit = LR_model_2.fit(X_train,y_train)
         y_pred = LR_model_2_fit.predict_proba(X_test)[:,1]

@@ -1,0 +1,25 @@
+(dp0
+S'home_ownership'
+p1
+(dp2
+VNONE
+p3
+S'Bin 0'
+p4
+sVOWN
+p5
+S'Bin 1'
+p6
+sVOTHER
+p7
+S'Bin 3'
+p8
+sVRENT
+p9
+S'Bin 2'
+p10
+sVMORTGAGE
+p11
+S'Bin 0'
+p12
+ss.

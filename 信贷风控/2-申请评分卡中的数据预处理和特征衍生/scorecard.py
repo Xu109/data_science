@@ -1,17 +1,21 @@
 import pandas as pd
+import numpy as np
 import re
 import time
 import datetime
 from dateutil.relativedelta import relativedelta
 from sklearn.model_selection import train_test_split
-
+import scorecard_functions
 
 def CareerYear(x):
-    if x.find('n/a') > -1:
+    x2 = str(x)
+    if x2 == 'nan':
         return -1
-    elif x.find("10+")>-1:
+    elif x2.find('n/a') > -1:
+        return -1
+    elif x2.find("10+")>-1:
         return 11
-    elif x.find('< 1') > -1:
+    elif x2.find('< 1') > -1:
         return 0
     else:
         return int(re.sub("\D", "", x))
@@ -25,12 +29,20 @@ def DescExisting(x):
         return 'desc'
 
 
-def ConvertDateStr(x,format):
+def ConvertDateStr(x):
+    mth_dict = {'Jan': 1, 'Feb': 2, 'Mar': 3, 'Apr': 4, 'May': 5, 'Jun': 6, 'Jul': 7, 'Aug': 8, 'Sep': 9, 'Oct': 10,
+                'Nov': 11, 'Dec': 12}
     if str(x) == 'nan':
         return datetime.datetime.fromtimestamp(time.mktime(time.strptime('9900-1','%Y-%m')))
+        #time.mktime 不能读取1970年之前的日期
     else:
-        return datetime.datetime.fromtimestamp(time.mktime(time.strptime(x,format)))
-
+        yr = int(x[4:6])
+        if yr <=17:
+            yr = 2000+yr
+        else:
+            yr = 1900 + yr
+        mth = mth_dict[x[:3]]
+        return datetime.datetime(yr,mth,1)
 
 def MonthGap(earlyDate, lateDate):
     if lateDate > earlyDate:
@@ -54,7 +66,7 @@ def MakeupMissing(x):
 # 1，读入数据
 # 2，选择合适的建模样本
 # 3，数据集划分成训练集和测试集
-allData = pd.read_csv('C:/Users/OkO/Desktop/Financial Data Analsys/3nd Series/Data/application.csv',header = 0)
+allData = pd.read_csv('application.csv',header = 0,encoding="ISO-8859-1")
 allData['term'] = allData['term'].apply(lambda x: int(x.replace(' months','')))
 
 # 处理标签：Fully Paid是正常用户；Charged Off是违约用户
@@ -91,8 +103,8 @@ trainData['emp_length_clean'] = trainData['emp_length'].map(CareerYear)
 trainData['desc_clean'] = trainData['desc'].map(DescExisting)
 
 # 处理日期。earliest_cr_line的格式不统一，需要统一格式且转换成python的日期
-trainData['app_date_clean'] = trainData['issue_d'].map(lambda x: ConvertDateStr(x,'%b-%y'))
-trainData['earliest_cr_line_clean'] = trainData['earliest_cr_line'].map(lambda x: ConvertDateStr(x,'%b-%y'))
+trainData['app_date_clean'] = trainData['issue_d'].map(lambda x: ConvertDateStr(x))
+trainData['earliest_cr_line_clean'] = trainData['earliest_cr_line'].map(lambda x: ConvertDateStr(x))
 
 # 处理mths_since_last_delinq。注意原始值中有0，所以用－1代替缺失
 trainData['mths_since_last_delinq_clean'] = trainData['mths_since_last_delinq'].map(lambda x:MakeupMissing(x))
@@ -136,7 +148,7 @@ less_value_features = []
 # 第一步，检查类别型变量中，哪些变量取值超过5
 for var in cat_features:
     valueCounts = len(set(trainData[var]))
-    print valueCounts
+    print (valueCounts)
     if valueCounts > 5:
         more_value_features.append(var)
     else:
@@ -145,9 +157,9 @@ for var in cat_features:
 # （i）当取值<5时：如果每种类别同时包含好坏样本，无需分箱；如果有类别只包含好坏样本的一种，需要合并
 merge_bin = {}
 for col in less_value_features:
-    binBadRate = BinBadRate(trainData, col, 'y')[0]
+    binBadRate = scorecard_functions.scoreBinBadRate(trainData, col, 'y')[0]
     if min(binBadRate.values()) == 0 or max(binBadRate.values()) == 1:
-        print '{} need to be combined'.format(col)
+        print ('{} need to be combined'.format(col))
         combine_bin = MergeBad0(trainData, col, 'y')
         merge_bin[col] = combine_bin
 
@@ -161,7 +173,7 @@ for col in more_value_features:
 
 # （iii）对连续型变量进行分箱，包括（ii）中的变量
 for col in num_features:
-    print "{} is in processing".format(col)
+    print ("{} is in processing".format(col))
     if -1 not in set(trainData[col]):
         max_interval = 5
         cutOff = ChiMerge(trainData, col, target, max_interval=max_interval,special_attribute=[],minBinPcnt=0)

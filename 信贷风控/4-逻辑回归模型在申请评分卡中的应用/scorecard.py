@@ -3,6 +3,7 @@ import pandas as pd
 import re
 import time
 import datetime
+import pickle
 from dateutil.relativedelta import relativedelta
 from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
@@ -12,6 +13,10 @@ from sklearn.linear_model import LogisticRegressionCV
 import statsmodels.api as sm
 from sklearn.ensemble import RandomForestClassifier
 import scorecard_functions_V3 as v3
+import warnings
+warnings.filterwarnings('ignore')
+from sklearn.metrics import roc_auc_score
+
 
 def CareerYear(x):
     #对工作年限进行转换
@@ -73,8 +78,11 @@ def MakeupMissing(x):
 # 1，读入数据
 # 2，选择合适的建模样本
 # 3，数据集划分成训练集和测试集
-#allData = pd.read_csv('C:/Users/OkO/Desktop/Financial Data Analsys/3nd Series/Data/application.csv',header = 0)
-allData = pd.read_csv('../2-申请评分卡中的数据预处理和特征衍生/application.csv',header = 0, encoding = 'latin1')
+
+
+folderOfData = r"D:/github_repository/data_science/信贷风控/4-逻辑回归模型在申请评分卡中的应用/data/"
+
+allData = pd.read_csv(folderOfData + 'application.csv',header = 0, encoding = 'latin1')
 
 allData['term'] = allData['term'].apply(lambda x: int(x.replace(' months','')))
 
@@ -91,6 +99,14 @@ allData1 = allData.loc[allData.term == 36]
 
 trainData, testData = train_test_split(allData1,test_size=0.4)
 
+#固化变量
+trainDataFile = open(folderOfData + 'trainData.pkl','wb')
+pickle.dump(trainData, trainDataFile)
+trainDataFile.close()
+
+testDataFile = open(folderOfData + 'testData.pkl','wb')
+pickle.dump(testData, testDataFile)
+testDataFile.close()
 
 '''
 第一步：数据预处理，包括
@@ -183,6 +199,12 @@ for col in less_value_features:
         trainData[newVar] = trainData[col].map(combine_bin)
         var_bin_list.append(newVar)
 
+#保存merge_bin_dict
+file1 = open(folderOfData + 'merge_bin_dict.pkl','wb')
+pickle.dump(merge_bin_dict,file1)
+file1.close()
+
+
 #less_value_features里剩下不需要合并的变量
 less_value_features = [i for i in less_value_features if i + '_Bin' not in var_bin_list]
 
@@ -193,6 +215,10 @@ for col in more_value_features:
     trainData[col+'_br_encoding'] = br_encoding['encoding']
     br_encoding_dict[col] = br_encoding['bad_rate']
     num_features.append(col+'_br_encoding')
+
+file2 = open(folderOfData + 'br_encoding_dict.pkl','wb')
+pickle.dump(br_encoding_dict,file2)
+file2.close()
 
 # （iii）对连续型变量进行分箱，包括（ii）中的变量
 continous_merged_dict = {}
@@ -238,6 +264,9 @@ for col in num_features:
         var_bin_list.append(newVar)
     continous_merged_dict[col] = cutOff
 
+file3 = open(folderOfData + 'continous_merged_dict.pkl','wb')
+pickle.dump(continous_merged_dict,file3)
+file3.close()
 
 '''
 第四步：WOE编码、计算IV
@@ -254,6 +283,10 @@ for var in all_var:
     woe_iv = v3.CalcWOE(trainData, var, 'y')
     WOE_dict[var] = woe_iv['WOE']
     IV_dict[var] = woe_iv['IV']
+
+file4 = open(folderOfData + 'WOE_dict.pkl','wb')
+pickle.dump(WOE_dict,file4)
+file4.close()
 
 #将变量IV值进行降序排列，方便后续挑选变量
 IV_dict_sorted = sorted(IV_dict.items(), key=lambda x: x[1], reverse=True)
@@ -347,7 +380,7 @@ pvals = pvals.to_dict()
 
 # ### 有些变量不显著，需要逐步剔除
 varLargeP = {k: v for k,v in pvals.items() if v >= 0.1}
-varLargeP = sorted(varLargeP.iteritems(), key=lambda d:d[1], reverse = True)
+varLargeP = sorted(varLargeP.items(), key=lambda d:d[1], reverse = True)
 while(len(varLargeP) > 0 and len(multi_analysis) > 0):
     # 每次迭代中，剔除最不显著的变量，直到
     # (1) 剩余所有变量均显著
@@ -367,8 +400,10 @@ while(len(varLargeP) > 0 and len(multi_analysis) > 0):
     pvals = LR.pvalues
     pvals = pvals.to_dict()
     varLargeP = {k: v for k, v in pvals.items() if v >= 0.1}
-    varLargeP = sorted(varLargeP.iteritems(), key=lambda d: d[1], reverse=True)
+    varLargeP = sorted(varLargeP.items(), key=lambda d: d[1], reverse=True)
 
+
+summary = LR.summary()
 '''
 int_rate_clean_Bin_WOE                 -0.923325
 zip_code_br_encoding_Bin_WOE           -0.913290
@@ -382,9 +417,14 @@ home_ownership_Bin_WOE                 -0.396530
 dti_Bin_WOE                            -0.709372
 intercept                              -2.095788
 '''
+
+trainData['prob'] = LR.predict(X)
+auc = roc_auc_score(trainData['y'],trainData['prob'])   #AUC = 0.73
+
+
 #
 #
-saveModel =open(folderOfData+'LR_Model_Normal.pkl','w')
+saveModel =open(folderOfData + 'LR_Model_Normal.pkl','wb')
 pickle.dump(LR,saveModel)
 saveModel.close()
 #

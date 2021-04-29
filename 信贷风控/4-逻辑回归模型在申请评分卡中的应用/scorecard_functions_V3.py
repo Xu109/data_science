@@ -392,8 +392,8 @@ def KS(df, score, target):
     all = pd.DataFrame({'total':total, 'bad':bad})
     all['good'] = all['total'] - all['bad']
     all[score] = all.index
-    all = all.sort_values(by=score,ascending=False)
     all.index = range(len(all))
+    all = all.sort_values(by=score,ascending=False)
     all['badCumRate'] = all['bad'].cumsum() / all['bad'].sum()
     all['goodCumRate'] = all['good'].cumsum() / all['good'].sum()
     KS = all.apply(lambda x: x.badCumRate - x.goodCumRate, axis=1)

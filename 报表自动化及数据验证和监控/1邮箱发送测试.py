@@ -40,7 +40,7 @@ try:
     message['To'] = ';'.join(receivers)
     
     smtp_obj = smtplib.SMTP_SSL(host = 'smtp.qq.com') # 开启发信服务，加密传输
-    smtp_obj.connect(host, port)  
+    smtp_obj.connect(host, port)
     smtp_obj.login(user, password) # 登录邮箱
     smtp_obj.sendmail(sender, receivers, message.as_string()) #发送邮件
     print ("邮件发送成功")
@@ -48,15 +48,16 @@ except smtplib.SMTPException:
     print ("邮件发送失败")
 
 '''
-1.Python连接数据库
+2.Python连接数据库
 '''
 risk1 =pymysql.connect(host="localhost",user="root",
-                      password="root",database="risk_test",
+                      password="root",database="learn",
                       charset="utf8")
-query1="""select * from risk_test.customer_detail"""
+query1="""select * from learn.customer_detail"""
 data1=pd.read_sql(query1,risk1)
 
 risk2 = sqlalchemy.create_engine('mysql+pymysql://root:root@localhost:3306/?charset=utf8')
-query2="""select * from risk_test.daily_report 
+query2="""select * from learn.daily_report
            where 日期>'2018-03-31' and 日期<='2018-04-30'"""
 data2=pd.read_sql(query2,risk2)
+

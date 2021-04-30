@@ -160,7 +160,7 @@ trainData.groupby(['maxDelqL12M'])['label'].mean()
 for x in allFeatures:
     for y in allFeatures:
         if x!=y:
-            print x,'   ',y,'   ',np.corrcoef(trainData[x],trainData[y])[0,1]
+            print (x,'   ',y,'   ',np.corrcoef(trainData[x],trainData[y])[0,1])
 
 
 
@@ -249,7 +249,7 @@ for var in categoricalFeatures:
         else:
             large_bin_var.append(var)
 for i in small_bin_var:
-    print i
+    print (i)
 '''
 {'maxDelqL1M': {0: 0.60379372931421049, 1: 0.31880138083205806, 2: 0.069183956724438597, 3: 0.0082209331292928574}}
 {'M2FreqL1M': {0: 0.99177906687070716, 1: 0.0082209331292928574}}
@@ -359,7 +359,7 @@ sns.heatmap(corr, mask=np.zeros_like(corr, dtype=np.bool), cmap=sns.diverging_pa
 '''
 X = np.matrix(trainData[single_analysis_vars])
 VIF_list = [variance_inflation_factor(X, i) for i in range(X.shape[1])]
-print max(VIF_list)
+print (max(VIF_list))
 # 最大的VIF是 3.429，小于10，因此这一步认为没有多重共线性
 multi_analysis = single_analysis_vars
 
@@ -455,7 +455,7 @@ while(n<len(featureImportanceSorted)):
     logit = sm.Logit(y, X_train)
     logit_result = logit.fit()
     params = logit_result.params
-    print "current var is ",nextVar,'   ', params[nextVar]
+    print ("current var is ",nextVar,'   ', params[nextVar])
     if max(params) < 0:
         n += 1
     else:
@@ -498,7 +498,7 @@ for var in largePValueVars:
     logit = sm.Logit(y, X_temp)
     logit_result = logit.fit()
     pvalues = logit_result.pvalues
-    print "The p-value of {0} is {1} ".format(var, str(pvalues[var]))
+    print ("The p-value of {0} is {1} ".format(var, str(pvalues[var])))
 '''
 The p-value of maxPayL6M_Bin_WOE is 3.94466107162e-137 
 The p-value of maxUrateL6M_Bin_WOE is 5.83590695685e-35 

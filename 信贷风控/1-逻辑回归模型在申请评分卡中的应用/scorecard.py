@@ -80,7 +80,7 @@ def MakeupMissing(x):
 # 3，数据集划分成训练集和测试集
 
 
-folderOfData = r"D:/github_repository/data_science/信贷风控/4-逻辑回归模型在申请评分卡中的应用/data/"
+folderOfData = r"D:/github_repository/data_science/信贷风控/1-逻辑回归模型在申请评分卡中的应用/data/"
 
 allData = pd.read_csv(folderOfData + 'application.csv',header = 0, encoding = 'latin1')
 

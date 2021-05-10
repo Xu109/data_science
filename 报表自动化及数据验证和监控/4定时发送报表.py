@@ -14,17 +14,17 @@ while True:
     
 #配置时间
     ehour=14 #定时小时
-    emin=43  #定时分钟
+    emin=18  #定时分钟
     esec=10  #定时秒
     current_time = time.localtime(time.time())  #当前时间date
     cur_time = time.strftime('%H:%M', time.localtime(time.time()))  #当前时间str
 
     smtpserver = 'smtp.qq.com'
     smtpport = 465
-    username = '3410593@qq.com'
-    password = 'rgokexqgaochbgic'
-    sender = 'Dana<3410593@qq.com>'
-    receiver = '3410593@qq.com' 
+    username = '1121134481@qq.com'
+    password = 'yrnkhduydjiygjie'
+    sender = 'Toby<1121134481@qq.com>'
+    receiver = '1121134481@qq.com' 
     subject = '贷后日报'
     
     message = MIMEMultipart()
@@ -36,7 +36,7 @@ while True:
 有任何疑问请随时与我联系，谢谢！ \
     """, 'plain', 'utf-8'))# 邮件正文
     # 构造附件
-    att1 = MIMEText(open('E:\\FAL课程\\vintage_report.xlsx','rb').read(), 'base64', 'utf-8')
+    att1 = MIMEText(open('vintage_report.xlsx','rb').read(), 'base64', 'utf-8')
     att1["Content-Type"] = 'application/octet-stream'
     att1["Content-Disposition"] = "attachment;filename=vintage_report.xlsx"
     message.attach(att1)
@@ -46,7 +46,7 @@ while True:
         print ("开始")
         #执行
         try:
-            smtp = smtplib.SMTP_SSL()
+            smtp = smtplib.SMTP_SSL(host = 'smtp.qq.com')
             smtp.connect(smtpserver, smtpport) #连接服务器
             smtp.login(username, password) #登录
             smtp.sendmail(sender, receiver, message.as_string())  #发送

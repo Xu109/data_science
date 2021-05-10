@@ -22,7 +22,7 @@ while True:
     smtpserver = 'smtp.qq.com'
     smtpport = 465
     username = '1121134481@qq.com'
-    password = 'yrnkhduydjiygjie'
+    password = '**********'
     sender = 'Toby<1121134481@qq.com>'
     receiver = '1121134481@qq.com' 
     subject = '贷后日报'

@@ -11,7 +11,7 @@ import os
 #为画图指定路径  
 os.environ["PATH"] += os.pathsep + 'C:/Program Files (x86)/Graphviz2.38/bin/'  
 #读取数据  
-data = pd.read_excel( './data/ data_for_tree.xlsx')  
+data = pd.read_excel('../../智能风控（数据集）/data_for_tree.xlsx')  
 data.head()  
 
 org_lst = ['uid','create_dt','oil_actv_dt','class_new','bad_ind']
@@ -28,24 +28,21 @@ base = base.drop_duplicates(['uid'],keep = 'first')
 gn = pd.DataFrame()  
 for i in agg_lst:  
     #计算个数  
-    tp = pd.DataFrame(df.groupby('uid').apply(
-                                       lambda df:len(df[i])).reset_index())  
+    tp = pd.DataFrame(df.groupby('uid').apply(lambda df:len(df[i])).reset_index())  
     tp.columns = ['uid',i + '_cnt']  
     if gn.empty == True:  
         gn = tp  
     else:  
         gn = pd.merge(gn,tp,on = 'uid',how = 'left')  
     #求历史特征值大于零的个数  
-    tp = pd.DataFrame(df.groupby('uid').apply(
-                          lambda df:np.where(df[i]>0,1,0).sum()).reset_index())  
+    tp = pd.DataFrame(df.groupby('uid').apply(lambda df:np.where(df[i]>0,1,0).sum()).reset_index())  
     tp.columns = ['uid',i + '_num']  
     if gn.empty == True:  
         gn = tp  
     else:  
         gn = pd.merge(gn,tp,on = 'uid',how = 'left')  
     #对历史数据求和  
-    tp = pd.DataFrame(df.groupby('uid').apply(
-                                  lambda df:np.nansum(df[i])).reset_index())  
+    tp = pd.DataFrame(df.groupby('uid').apply(lambda df:np.nansum(df[i])).reset_index())  
     tp.columns = ['uid',i + '_tot']  
     if gn.empty == True:  
         gn = tp  
@@ -101,16 +98,16 @@ for i in agg_lst:
 
 gc = pd.DataFrame()  
 for i in dstc_lst:  
-    tp = pd.DataFrame(df.groupby('uid').apply(
-                                   lambda df: len(set(df[i]))).reset_index())  
+    tp = pd.DataFrame(df.groupby('uid').apply(lambda df: len(set(df[i]))).reset_index())  
     tp.columns = ['uid',i + '_dstc']  
     if gc.empty == True:  
         gc = tp  
     else:  
         gc = pd.merge(gc,tp,on = 'uid',how = 'left')
 
-fn =  base.merge(gn,on='uid').merge(gc,on='uid')  
+fn = base.merge(gn,on='uid').merge(gc,on='uid')  
 fn = pd.merge(fn,gc,on= 'uid')   
+fn = fn.fillna(0)
 fn.shape 
 
 x = fn.drop(['uid','oil_actv_dt','create_dt','bad_ind','class_new'],axis = 1)
@@ -122,7 +119,7 @@ dtree = dtree.fit(x,y)
 
 import pydotplus   
 from IPython.display import Image  
-from sklearn.externals.six import StringIO  
+from six import StringIO  
 import os  
 os.environ["PATH"] += os.pathsep + 'C:/Program Files (x86)/Graphviz2.38/bin/'
 
